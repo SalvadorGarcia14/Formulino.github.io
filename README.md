@@ -56,16 +56,19 @@ src/
 ├── components/
 │   ├── common/
 │   └── ui/
+│   ├── StatBar.jsx             # Barra visual de estadísticas reutilizable
+│   └── TeamCard.jsx            # Tarjeta de selección de equipo
 ├── context/
 │   └── CareerContext.jsx         # Estado global, persistencia LocalStorage y reducers
 ├── data/
 │   ├── categories.js            # Jerarquía de categorías (Karting a F1)
 │   ├── teams.js                 # Equipos ficticios con atributos de rendimiento
-    ├── circuits.jsx             # Circuitos por categoría
+│   ├── circuits.jsx             # Circuitos por categoría
 │   └── initialPilotStats.js      #Por ver
 ├── hooks/
 │   └── useGame.js
 ├── pages/
+│   └── CreatePlayer.jsx        # Pantalla con el stepper (Paso 1: Piloto, Paso 2: Equipo)
 ├── services/
 │   └── raceEngine.js
 ├── styles/
