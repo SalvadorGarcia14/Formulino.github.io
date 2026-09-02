@@ -57,11 +57,12 @@ src/
 │   ├── common/
 │   └── ui/
 ├── context/
-│   └── GameContext.jsx
+│   └── CareerContext.jsx         # Estado global, persistencia LocalStorage y reducers
 ├── data/
-│   ├── categories.js
-│   ├── teams.js
-│   └── initialPilotStats.js
+│   ├── categories.js            # Jerarquía de categorías (Karting a F1)
+│   ├── teams.js                 # Equipos ficticios con atributos de rendimiento
+    ├── circuits.jsx             # Circuitos por categoría
+│   └── initialPilotStats.js      #Por ver
 ├── hooks/
 │   └── useGame.js
 ├── pages/
@@ -70,7 +71,8 @@ src/
 ├── styles/
 │   └── variables.css
 ├── utils/
-│   └── calculations.js
+│   └── storage.js             # Helpers seguros para LocalStorage
+│   └── calculations.js        
 ├── App.jsx
 ├── index.css
 └── main.jsx
