@@ -58,24 +58,37 @@ src/
 │   └── ui/
 │   ├── StatBar.jsx             # Barra visual de estadísticas reutilizable
 │   └── TeamCard.jsx            # Tarjeta de selección de equipo
+│   ├── StandingsTable.jsx      # Tabla de clasificación del campeonato
+│   └── RaceModal.jsx           # Modal interactivo del Gran Premio (Decisión + Resultados + Evento)
+│   └── SeasonEndModal.jsx      # Modal de gala de premios, resumen y firma de contrato
+│   └── SponsorModal.jsx        # Panel de negociación y firma de sponsors
 ├── context/
-│   └── CareerContext.jsx         # Estado global, persistencia LocalStorage y reducers
+│   └── CareerContext.jsx         # Estado global, persistencia LocalStorage y reducers  | # Reducer para procesar ADVANCE_SEASON    |    " # Gestión de activeSponsors y cobro por carrera
+
 ├── data/
 │   ├── categories.js            # Jerarquía de categorías (Karting a F1)
 │   ├── teams.js                 # Equipos ficticios con atributos de rendimiento
 │   ├── circuits.jsx             # Circuitos por categoría
+│   └── events.js               # Catálogo de eventos aleatorios post-carrera
+│   ├── teams.js                # Añadir equipos de Fórmula 4 Regional (Tier 3)
+│   └── sponsors.js             # Catálogo de sponsors y requisitos
 │   └── initialPilotStats.js      #Por ver
 ├── hooks/
 │   └── useGame.js
 ├── pages/
-│   └── CreatePlayer.jsx        # Pantalla con el stepper (Paso 1: Piloto, Paso 2: Equipo)
+│   └── CreatePlayer.jsx        # Pantalla con el stepper (Paso 1: Piloto, Paso 2: Equipo)   |     # Nuevo reducer para procesar el resultado de la ronda
 ├── services/
 │   └── raceEngine.js
+│   └── gameEngine.js           # Algoritmo de simulación matemática y resolución
+│   └── contractEngine.js       # Generador procedural de contratos de fin de año    |    # Escalabilidad multinivel (Tier 1 -> Tier 2 -> Tier 3)
 ├── styles/
 │   └── variables.css
+│   ├── theme.css             # Variables de diseño, reset y animaciones globales
+│   └── Formulino.css         # Clases para tarjetas, botones, inputs y HUD
 ├── utils/
 │   └── storage.js             # Helpers seguros para LocalStorage
 │   └── calculations.js        
-├── App.jsx
+├── App.jsx                     # Integración del botón de carrera y tabla de posiciones      | # Disparador condicional del modal de fin de temporada    |    # HUD de sponsors y botón de gestión comercial
+
 ├── index.css
 └── main.jsx

@@ -13,21 +13,21 @@ const DRIVING_STYLES = {
         budget: 8000
     },
     Agresivo: {
-        description: "Busca huecos imposibles y adelanta rápido, pero arriesga roturas o toques.",
+        description: "Busca huecos imposibles y adelanta rápido; mayor riesgo mecánico o penalizaciones.",
         stats: { performance: 62, consistency: 45, mentality: 50, technicalFeedback: 45, risk: 75 },
         popularity: 40,
         reputation: 30,
         budget: 6000
     },
     Consistente: {
-        description: "Rara vez comete errores. Gestiona bien los neumáticos y suma puntos siempre.",
+        description: "Rara vez comete errores. Trata bien el material y suma puntos de forma regular.",
         stats: { performance: 52, consistency: 65, mentality: 60, technicalFeedback: 55, risk: 35 },
         popularity: 25,
         reputation: 40,
         budget: 7000
     },
     Técnico: {
-        description: "Gran capacidad para comunicar cambios a los mecánicos y evolucionar el chasis.",
+        description: "Excelente sensibilidad mecánica para evolucionar el setup junto a los ingenieros.",
         stats: { performance: 50, consistency: 58, mentality: 55, technicalFeedback: 70, risk: 40 },
         popularity: 20,
         reputation: 45,
@@ -38,7 +38,6 @@ const DRIVING_STYLES = {
 
 function CreatePlayer() {
     const { dispatch } = useCareer();
-
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         name: "",
@@ -50,17 +49,15 @@ function CreatePlayer() {
     });
 
     const [selectedTeamId, setSelectedTeamId] = useState(null);
-
-    // Equipos del primer nivel jerárquico (Karting Nacional)
     const tier1Teams = TEAMS.filter((t) => t.categoryId === 1);
     const currentStyleConfig = DRIVING_STYLES[formData.drivingStyle];
 
     const handleInputChange = (e) => {
-      const { name, value } = e.target;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: name === "number" ? Number(value) : value
-      }));
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: name === "number" ? Number(value) : value
+        }));
     };
 
     const handleNextStep = (e) => {
@@ -73,211 +70,153 @@ function CreatePlayer() {
     };
 
     const handleStartCareer = () => {
-        if (!selectedTeamId) {
-            alert("Por favor selecciona un equipo para iniciar tu carrera.");
-            return;
-        }
+        if (!selectedTeamId) return;
 
-      const newPilot = {
-        name: formData.name.trim(),
-        lastName: formData.lastName.trim(),
-        nationality: formData.nationality,
-        number: formData.number,
-        age: 16,
-        gender: formData.gender,
-        drivingStyle: formData.drivingStyle,
-        stats: { ...currentStyleConfig.stats },
-        popularity: currentStyleConfig.popularity,
-        reputation: currentStyleConfig.reputation,
-        budget: currentStyleConfig.budget,
-        isRetired: false
-      };
-
-      dispatch({
-        type: "INIT_CAREER",
-        payload: {
-          pilot: newPilot,
-          teamId: selectedTeamId
-        }
-      });
+        dispatch({
+            type: "INIT_CAREER",
+            payload: {
+                pilot: {
+                    name: formData.name.trim(),
+                    lastName: formData.lastName.trim(),
+                    nationality: formData.nationality,
+                    number: formData.number,
+                    age: 16,
+                    gender: formData.gender,
+                    drivingStyle: formData.drivingStyle,
+                    stats: { ...currentStyleConfig.stats },
+                    popularity: currentStyleConfig.popularity,
+                    reputation: currentStyleConfig.reputation,
+                    budget: currentStyleConfig.budget,
+                    isRetired: false
+                },
+                teamId: selectedTeamId
+            }
+        });
     };
 
-return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "1.5rem" }}>
-      <header style={{ textAlign: "center", marginBottom: "2rem" }}>
-        <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🏎️ Formulino</h1>
-        <p style={{ color: "#6b7280" }}>
-          {step === 1 ? "Paso 1: Configura la ficha de tu piloto (16 años)" : "Paso 2: Elige tu equipo de Karting Nacional"}
-        </p>
-      </header>
+    return (
+        <div style={{ maxWidth: "860px", margin: "0 auto", padding: "2.5rem 1.5rem" }}>
+            <header style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+                <h1 style={{ fontFamily: "Teko, sans-serif", fontSize: "3.5rem", letterSpacing: "2px", textTransform: "uppercase", margin: 0, lineHeight: 1 }}>
+                    🏎️ FORMULINO
+                </h1>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginTop: "0.5rem" }}>
+                    {step === 1 ? "Paso 1: Configura la ficha técnica del piloto" : "Paso 2: Elige tu equipo de Karting Nacional"}
+                </p>
+            </header>
 
-      {step === 1 && (
-        <form onSubmit={handleNextStep} style={{ display: "grid", gap: "1.5rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-            <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: "0.25rem" }}>Nombre</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-                placeholder="Ej. Salvador"
-                style={{ width: "100%", padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: "0.25rem" }}>Apellido</label>
-              <input
-                type="text"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleInputChange}
-                required
-                placeholder="Ej. García"
-                style={{ width: "100%", padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" }}
-              />
-            </div>
-          </div>
+            {step === 1 && (
+                <form onSubmit={handleNextStep} className="game-card" style={{ display: "grid", gap: "1.5rem" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+                        <div className="form-group">
+                            <label className="form-label">Nombre</label>
+                            <input className="form-input" type="text" name="name" value={formData.name} onChange={handleInputChange} required placeholder="Salvador" />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Apellido</label>
+                            <input className="form-input" type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} required placeholder="García" />
+                        </div>
+                    </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
-            <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: "0.25rem" }}>País</label>
-              <input
-                type="text"
-                name="nationality"
-                value={formData.nationality}
-                onChange={handleInputChange}
-                style={{ width: "100%", padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: "0.25rem" }}>Dorsal / Número</label>
-              <input
-                type="number"
-                name="number"
-                min="1"
-                max="99"
-                value={formData.number}
-                onChange={handleInputChange}
-                style={{ width: "100%", padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: "0.25rem" }}>Género</label>
-              <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleInputChange}
-                style={{ width: "100%", padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" }}
-              >
-                <option value="M">Masculino</option>
-                <option value="F">Femenino</option>
-                <option value="NB">No Binario</option>
-              </select>
-            </div>
-          </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.25rem" }}>
+                        <div className="form-group">
+                            <label className="form-label">País / Bandera</label>
+                            <input className="form-input" type="text" name="nationality" value={formData.nationality} onChange={handleInputChange} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Dorsal</label>
+                            <input className="form-input" type="number" name="number" min="1" max="99" value={formData.number} onChange={handleInputChange} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Género</label>
+                            <select className="form-select" name="gender" value={formData.gender} onChange={handleInputChange}>
+                                <option value="M">Masculino</option>
+                                <option value="F">Femenino</option>
+                                <option value="NB">No Binario</option>
+                            </select>
+                        </div>
+                    </div>
 
-          <div>
-            <label style={{ display: "block", fontWeight: 600, marginBottom: "0.25rem" }}>Estilo de Conducción</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.5rem" }}>
-              {Object.keys(DRIVING_STYLES).map((style) => (
-                <button
-                  type="button"
-                  key={style}
-                  onClick={() => setFormData((prev) => ({ ...prev, drivingStyle: style }))}
-                  style={{
-                    padding: "0.75rem",
-                    borderRadius: "6px",
-                    border: formData.drivingStyle === style ? "2px solid #2563eb" : "1px solid #ccc",
-                    backgroundColor: formData.drivingStyle === style ? "#eff6ff" : "#fff",
-                    cursor: "pointer",
-                    fontWeight: 600
-                  }}
-                >
-                  {style}
-                </button>
-              ))}
-            </div>
-            <p style={{ fontSize: "0.85rem", color: "#555", marginTop: "0.5rem" }}>
-              {currentStyleConfig.description}
-            </p>
-          </div>
+                    <div className="form-group">
+                        <label className="form-label">Estilo de Conducción</label>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                            {Object.keys(DRIVING_STYLES).map((style) => (
+                                <button
+                                    type="button"
+                                    key={style}
+                                    className={`style-button ${formData.drivingStyle === style ? "active" : ""}`}
+                                    onClick={() => setFormData((prev) => ({ ...prev, drivingStyle: style }))}
+                                >
+                                    {style}
+                                </button>
+                            ))}
+                        </div>
+                        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: 0 }}>
+                            {currentStyleConfig.description}
+                        </p>
+                    </div>
 
-          <div style={{ border: "1px solid #e5e7eb", borderRadius: "6px", padding: "1rem", backgroundColor: "#f9fafb" }}>
-            <h4 style={{ margin: "0 0 0.5rem 0" }}>Atributos iniciales calculados:</h4>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-              <StatBar label="Rendimiento" value={currentStyleConfig.stats.performance} />
-              <StatBar label="Consistencia" value={currentStyleConfig.stats.consistency} />
-              <StatBar label="Mentalidad" value={currentStyleConfig.stats.mentality} />
-              <StatBar label="Feedback Técnico" value={currentStyleConfig.stats.technicalFeedback} />
-              <StatBar label="Agresividad / Riesgo" value={currentStyleConfig.stats.risk} color="#f59e0b" />
-              <StatBar label="Popularidad" value={currentStyleConfig.popularity} color="#ec4899" />
-            </div>
-          </div>
+                    <div style={{ background: "var(--bg-accent)", borderRadius: "var(--radius-sm)", padding: "1.25rem", border: "1px solid var(--border-subtle)" }}>
+                        <h4 style={{ fontSize: "0.85rem", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "1rem" }}>
+                            Atributos de Salida
+                        </h4>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                            <StatBar label="Rendimiento" value={currentStyleConfig.stats.performance} />
+                            <StatBar label="Consistencia" value={currentStyleConfig.stats.consistency} />
+                            <StatBar label="Mentalidad" value={currentStyleConfig.stats.mentality} />
+                            <StatBar label="Feedback Técnico" value={currentStyleConfig.stats.technicalFeedback} />
+                            <StatBar label="Agresividad / Riesgo" value={currentStyleConfig.stats.risk} color="var(--accent-amber)" />
+                            <StatBar label="Popularidad Inicial" value={currentStyleConfig.popularity} color="var(--accent-pink)" />
+                        </div>
+                    </div>
 
-          <button
-            type="submit"
-            style={{
-              padding: "0.8rem",
-              borderRadius: "6px",
-              border: "none",
-              backgroundColor: "#2563eb",
-              color: "#fff",
-              fontSize: "1rem",
-              fontWeight: 600,
-              cursor: "pointer"
-            }}
-          >
-            Continuar a Selección de Equipo →
-          </button>
-        </form>
-      )}
+                    <button type="submit" className="btn btn-primary" style={{ padding: "0.85rem", fontSize: "1rem" }}>
+                        Continuar a Selección de Equipo →
+                    </button>
+                </form>
+            )}
 
-      {step === 2 && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setStep(1)}
-            style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", marginBottom: "1rem" }}
-          >
-            ← Volver a modificar piloto
-          </button>
+            {step === 2 && (
+                <div>
+                    <button
+                        type="button"
+                        className="btn"
+                        onClick={() => setStep(1)}
+                        style={{ background: "none", color: "var(--text-secondary)", marginBottom: "1.5rem", padding: "0.25rem 0.5rem" }}
+                    >
+                        ← Volver a ficha de piloto
+                    </button>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
-            {tier1Teams.map((team) => (
-              <TeamCard
-                key={team.id}
-                team={team}
-                isSelected={selectedTeamId === team.id}
-                onSelect={setSelectedTeamId}
-              />
-            ))}
-          </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
+                        {tier1Teams.map((team) => (
+                            <TeamCard
+                                key={team.id}
+                                team={team}
+                                isSelected={selectedTeamId === team.id}
+                                onSelect={setSelectedTeamId}
+                            />
+                        ))}
+                    </div>
 
-          <button
-            type="button"
-            onClick={handleStartCareer}
-            disabled={!selectedTeamId}
-            style={{
-              width: "100%",
-              padding: "0.9rem",
-              borderRadius: "6px",
-              border: "none",
-              backgroundColor: selectedTeamId ? "#16a34a" : "#9ca3af",
-              color: "#fff",
-              fontSize: "1.1rem",
-              fontWeight: 600,
-              cursor: selectedTeamId ? "pointer" : "not-allowed"
-            }}
-          >
-            Comenzar Temporada de Karting Nacional 🏁
-          </button>
+                    <button
+                        type="button"
+                        onClick={handleStartCareer}
+                        disabled={!selectedTeamId}
+                        className={`btn ${selectedTeamId ? "btn-success" : ""}`}
+                        style={{
+                            width: "100%",
+                            padding: "1rem",
+                            fontSize: "1.1rem",
+                            opacity: selectedTeamId ? 1 : 0.4,
+                            cursor: selectedTeamId ? "pointer" : "not-allowed"
+                        }}
+                    >
+                        Comenzar Temporada de Karting Nacional 🏁
+                    </button>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
-
-};
+    );
+}
 
 export default CreatePlayer;

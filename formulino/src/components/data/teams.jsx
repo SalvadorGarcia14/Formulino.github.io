@@ -31,7 +31,7 @@ export const TEAMS = [
     description: "Estructura humilde, sólida y consistente para dar los primeros pasos.",
   },
 
-  // Tier 2: Karting Internacional (para ascensos del MVP)
+  // Tier 2: Karting Internacional
   {
     id: 201,
     categoryId: 2,
@@ -62,4 +62,36 @@ export const TEAMS = [
     prestige: 62,
     description: "Equipo consistente y respetado en la media tabla internacional.",
   },
+
+  // Tier 3: Fórmula 4 Regional
+  {
+    id: 301,
+    categoryId: 3,
+    name: "Prema Nova Racing",
+    performance: 85,
+    reliability: 80,
+    budget: 180000,
+    prestige: 82,
+    description: "La estructura de referencia para el salto a los monoplazas de ruedas descubiertas.",
+  },
+  {
+    id: 302,
+    categoryId: 3,
+    name: "Campos Vanguard",
+    performance: 80,
+    reliability: 85,
+    budget: 150000,
+    prestige: 78,
+    description: "Gran tradición formando jóvenes talentos con una configuración muy noble de chasis.",
+  },
+  {
+    id: 303,
+    categoryId: 3,
+    name: "Arden Tech Motorsport",
+    performance: 76,
+    reliability: 78,
+    budget: 130000,
+    prestige: 72,
+    description: "Equipo competitivo de media tabla británica con fuerte inversión en aerodinámica.",
+  }
 ];
