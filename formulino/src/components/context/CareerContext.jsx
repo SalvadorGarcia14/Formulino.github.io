@@ -49,10 +49,12 @@ const initialState = {
     year: 1,
     categoryId: 1,
     currentRound: 1,
-    totalRounds: 6,
-    standings: [], // [{ pilotId, name, points, wins, podiums }]
-    resultsHistory: [], // Entidad Resultado [{ round, circuitId, position, points }]
-    isCompleted: false
+    totalRounds: 4,
+    standings: [],
+    resultsHistory: [],
+    isCompleted: false,
+    nemesis: null, // <-- Nuevo estado
+    activeQuest: null
   },
 
   // Patrocinadores activos (piloto_sponsor)
@@ -66,7 +68,7 @@ function careerReducer(state, action) {
     case "INIT_CAREER": {
       const { pilot, teamId } = action.payload;
       const initialStandings = generateInitialGrid(`${pilot.name} ${pilot.lastName}`);
-      
+
       return {
         ...initialState,
         pilot,
@@ -112,12 +114,12 @@ function careerReducer(state, action) {
     }
 
     case "COMPLETE_ROUND": {
-      const { userPosition, circuitId, eventEffects } = action.payload;
+      const { userPosition, circuitId, eventEffects, competitors, incident } = action.payload; // Recibe incident
+
       const currentCategory = CATEGORIES.find((c) => c.id === state.season.categoryId);
       const pointsTable = currentCategory.pointsSystem;
       const earnedPoints = pointsTable[userPosition - 1] || 0;
 
-      // Cálculo de cobros de sponsors por carrera
       const sponsorEarnings = state.activeSponsors.reduce((sum, sp) => sum + sp.payoutPerRace, 0);
 
       const updatedStandings = state.season.standings.map((driver) => {
@@ -130,17 +132,69 @@ function careerReducer(state, action) {
           };
         }
         const rivalPoints = Math.max(0, Math.floor(Math.random() * 12));
-        return {
-          ...driver,
-          points: driver.points + rivalPoints
-        };
+        return { ...driver, points: driver.points + rivalPoints };
       });
 
       updatedStandings.sort((a, b) => b.points - a.points);
 
-      let deltaPop = userPosition <= 3 ? 8 : (userPosition <= 6 ? 4 : -2);
-      let deltaRep = userPosition <= 5 ? 5 : 0;
-      let deltaTeamRel = userPosition <= 5 ? 4 : -2;
+      // --- INICIO LÓGICA DE NÉMESIS ---
+      let currentNemesis = state.season.nemesis;
+      let bonusPop = 0;
+      let bonusRep = 0;
+
+      if (competitors && competitors.length > 0) {
+        if (!currentNemesis) {
+          const nemesisIndex = userPosition === 1 ? 1 : userPosition - 2;
+          const chosenRival = competitors[nemesisIndex]?.name || competitors[1].name;
+          currentNemesis = { name: chosenRival, score: 0 };
+        }
+        const nemesisPos = competitors.findIndex(c => c.name === currentNemesis.name) + 1;
+        if (userPosition < nemesisPos) {
+          currentNemesis = { ...currentNemesis, score: currentNemesis.score + 1 };
+          bonusPop += 3;
+          bonusRep += 2;
+        } else {
+          currentNemesis = { ...currentNemesis, score: currentNemesis.score - 1 };
+        }
+      }
+      // --- FIN LÓGICA DE NÉMESIS ---
+
+      // --- INICIO LÓGICA DE MICRO-OBJETIVO ---
+      let questBonusPop = 0;
+      let questBonusRep = 0;
+      let questBonusBudget = 0;
+      let questBonusTeamRel = 0;
+
+      if (state.season.activeQuest) {
+        const q = state.season.activeQuest;
+        let success = false;
+
+        if (q.type === 'POSITION') {
+          success = userPosition <= q.target;
+        } else if (q.type === 'CLEAN_RACE') {
+          success = !incident; // Usa la variable de incidente enviada desde RaceModal
+        } else if (q.type === 'BEAT_NEMESIS') {
+          const nemesisPos = competitors.findIndex(c => c.name === currentNemesis?.name) + 1;
+          success = userPosition < nemesisPos;
+        }
+
+        if (success) {
+          questBonusBudget = q.reward.budget || 0;
+          questBonusPop = q.reward.pop || 0;
+          questBonusRep = q.reward.rep || 0;
+          questBonusTeamRel = q.reward.teamRelationship || 0;
+        } else {
+          questBonusBudget = q.penalty.budget || 0;
+          questBonusPop = q.penalty.pop || 0;
+          questBonusRep = q.penalty.rep || 0;
+          questBonusTeamRel = q.penalty.teamRelationship || 0;
+        }
+      }
+      // --- FIN LÓGICA DE MICRO-OBJETIVO ---
+
+      let deltaPop = (userPosition <= 3 ? 8 : (userPosition <= 6 ? 4 : -2)) + bonusPop + questBonusPop;
+      let deltaRep = (userPosition <= 5 ? 5 : 0) + bonusRep + questBonusRep;
+      let deltaTeamRel = (userPosition <= 5 ? 4 : -2) + questBonusTeamRel;
 
       if (eventEffects) {
         if (eventEffects.popularity) deltaPop += eventEffects.popularity;
@@ -157,7 +211,7 @@ function careerReducer(state, action) {
           ...state.pilot,
           popularity: Math.min(100, Math.max(0, state.pilot.popularity + deltaPop)),
           reputation: Math.min(100, Math.max(0, state.pilot.reputation + deltaRep)),
-          budget: state.pilot.budget + sponsorEarnings + (eventEffects?.budget || 0),
+          budget: state.pilot.budget + sponsorEarnings + questBonusBudget + (eventEffects?.budget || 0),
           stats: {
             ...state.pilot.stats,
             mentality: Math.min(100, Math.max(1, state.pilot.stats.mentality + (eventEffects?.mentality || 0))),
@@ -177,7 +231,9 @@ function careerReducer(state, action) {
             ...state.season.resultsHistory,
             { round: state.season.currentRound, circuitId, position: userPosition, points: earnedPoints }
           ],
-          isCompleted: isSeasonEnd
+          isCompleted: isSeasonEnd,
+          nemesis: currentNemesis,
+          activeQuest: null // Se reinicia tras cada carrera
         }
       };
     }

@@ -152,3 +152,92 @@
   border-radius: 999px;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+
+
+
+
+
+/* src/components/styles/Formulino.css */
+
+/* Efecto panel de cristal para modales y tarjetas destacadas */
+.glass-panel {
+  background: rgba(19, 27, 38, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-md);
+}
+
+/* Tipografía de telemetría para números y datos crudos */
+.telemetry-text {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  letter-spacing: -0.5px;
+  font-weight: 600;
+}
+
+/* Animaciones de entrada escalonada */
+.fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Botones Tácticos Estilo Volante */
+.btn-tactical {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(145deg, var(--bg-card), var(--bg-main));
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-tactical::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  background: var(--accent-blue);
+  transition: width 0.2s ease;
+}
+
+.btn-tactical:hover {
+  transform: translateX(4px);
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.btn-tactical:hover::before {
+  width: 6px;
+}
+
+.btn-tactical.attack::before { background: var(--accent-red); }
+.btn-tactical.defend::before { background: var(--accent-emerald); }
+
+/* Indicadores de Estado (Glowing Dots) */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  box-shadow: 0 0 8px currentColor;
+}
+.status-active { color: var(--accent-emerald); background: var(--accent-emerald); }
+.status-warning { color: var(--accent-amber); background: var(--accent-amber); }
+.status-danger { color: var(--accent-red); background: var(--accent-red); }
