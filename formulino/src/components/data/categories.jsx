@@ -23,7 +23,7 @@ export const CATEGORIES = [
     tier: 3,
     minAge: 16,
     maxAge: 25,
-    racesPerSeason: 8,
+    racesPerSeason: 6,
     pointsSystem: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
   },
   {
@@ -32,7 +32,7 @@ export const CATEGORIES = [
     tier: 4,
     minAge: 17,
     maxAge: 28,
-    racesPerSeason: 9,
+    racesPerSeason: 7,
     pointsSystem: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
   },
   {
@@ -41,7 +41,7 @@ export const CATEGORIES = [
     tier: 5,
     minAge: 18,
     maxAge: 30,
-    racesPerSeason: 9,
+    racesPerSeason: 8,
     pointsSystem: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
   },
   {

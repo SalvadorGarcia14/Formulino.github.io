@@ -8,28 +8,28 @@ const DRIVING_STYLES = {
     Equilibrado: {
         description: "Piloto versátil sin fallas graves ni ventajas extremas.",
         stats: { performance: 55, consistency: 55, mentality: 55, technicalFeedback: 50, risk: 50 },
-        popularity: 30,
+        popularity: 0,
         reputation: 35,
         budget: 8000
     },
     Agresivo: {
         description: "Busca huecos imposibles y adelanta rápido; mayor riesgo mecánico o penalizaciones.",
         stats: { performance: 62, consistency: 45, mentality: 50, technicalFeedback: 45, risk: 75 },
-        popularity: 40,
+        popularity: 0,
         reputation: 30,
         budget: 6000
     },
     Consistente: {
         description: "Rara vez comete errores. Trata bien el material y suma puntos de forma regular.",
         stats: { performance: 52, consistency: 65, mentality: 60, technicalFeedback: 55, risk: 35 },
-        popularity: 25,
+        popularity: 0,
         reputation: 40,
         budget: 7000
     },
     Técnico: {
         description: "Excelente sensibilidad mecánica para evolucionar el setup junto a los ingenieros.",
         stats: { performance: 50, consistency: 58, mentality: 55, technicalFeedback: 70, risk: 40 },
-        popularity: 20,
+        popularity: 0,
         reputation: 45,
         budget: 9000
     }

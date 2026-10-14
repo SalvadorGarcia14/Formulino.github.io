@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect } from "react";
+import { createContext, useContext, useReducer, useEffect, useMemo } from "react";
 import { loadGameData, saveGameData, clearGameData } from "../utils/storage";
 import { generateInitialGrid } from "../services/gameEngine.jsx";
 import { CATEGORIES } from "../data/categories.jsx";
@@ -63,12 +63,62 @@ const initialState = {
   // Historial global de trayectoria (para el sistema de legado)
   careerHistory: []
 };
+
+// --- FUNCIONES HELPER (Optimizan y limpian el reducer) ---
+
+// Limita un valor numérico entre un mínimo y un máximo
+const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
+
+// Procesa la lógica de la rivalidad aislando la complejidad
+const processNemesis = (currentNemesis, competitors, userPosition) => {
+  let nemesis = currentNemesis;
+  let bonusPop = 0;
+  let bonusRep = 0;
+
+  if (competitors && competitors.length > 0) {
+    if (!nemesis) {
+      const nemesisIndex = userPosition === 1 ? 1 : userPosition - 2;
+      const chosenRival = competitors[nemesisIndex]?.name || competitors[1].name;
+      nemesis = { name: chosenRival, score: 0 };
+    }
+    const nemesisPos = competitors.findIndex(c => c.name === nemesis.name) + 1;
+    if (userPosition < nemesisPos) {
+      nemesis = { ...nemesis, score: nemesis.score + 1 };
+      bonusPop = 3;
+      bonusRep = 2;
+    } else {
+      nemesis = { ...nemesis, score: nemesis.score - 1 };
+    }
+  }
+  return { nemesis, bonusPop, bonusRep };
+};
+
+// Procesa la recompensa o castigo del micro-objetivo
+const processQuest = (quest, userPosition, incident, competitors, nemesis) => {
+  if (!quest) return { budget: 0, pop: 0, rep: 0, teamRel: 0 };
+  
+  let success = false;
+  if (quest.type === 'POSITION') success = userPosition <= quest.target;
+  else if (quest.type === 'CLEAN_RACE') success = !incident;
+  else if (quest.type === 'BEAT_NEMESIS') {
+    const nemesisPos = competitors.findIndex(c => c.name === nemesis?.name) + 1;
+    success = userPosition < nemesisPos;
+  }
+
+  const result = success ? quest.reward : quest.penalty;
+  return {
+    budget: result.budget || 0,
+    pop: result.pop || 0,
+    rep: result.rep || 0,
+    teamRel: result.teamRelationship || 0
+  };
+};
+
+// --- REDUCER PRINCIPAL ---
 function careerReducer(state, action) {
   switch (action.type) {
     case "INIT_CAREER": {
       const { pilot, teamId } = action.payload;
-      const initialStandings = generateInitialGrid(`${pilot.name} ${pilot.lastName}`);
-
       return {
         ...initialState,
         pilot,
@@ -81,7 +131,7 @@ function careerReducer(state, action) {
         },
         season: {
           ...initialState.season,
-          standings: initialStandings
+          standings: generateInitialGrid(`${pilot.name} ${pilot.lastName}`)
         },
         activeSponsors: []
       };
@@ -89,40 +139,31 @@ function careerReducer(state, action) {
 
     case "SIGN_SPONSOR": {
       const sponsor = action.payload;
-      if (state.activeSponsors.length >= 3) return state; // Máximo 3 sponsors
-      if (state.activeSponsors.some((s) => s.id === sponsor.id)) return state;
-
+      if (state.activeSponsors.length >= 3 || state.activeSponsors.some(s => s.id === sponsor.id)) {
+        return state;
+      }
       return {
         ...state,
-        pilot: {
-          ...state.pilot,
-          budget: state.pilot.budget + sponsor.signingBonus
-        },
-        activeSponsors: [
-          ...state.activeSponsors,
-          { id: sponsor.id, name: sponsor.name, payoutPerRace: sponsor.payoutPerRace }
-        ]
+        pilot: { ...state.pilot, budget: state.pilot.budget + sponsor.signingBonus },
+        activeSponsors: [...state.activeSponsors, { id: sponsor.id, name: sponsor.name, payoutPerRace: sponsor.payoutPerRace }]
       };
     }
 
     case "RELEASE_SPONSOR": {
-      const sponsorId = action.payload;
       return {
         ...state,
-        activeSponsors: state.activeSponsors.filter((s) => s.id !== sponsorId)
+        activeSponsors: state.activeSponsors.filter(s => s.id !== action.payload)
       };
     }
 
     case "COMPLETE_ROUND": {
-      const { userPosition, circuitId, eventEffects, competitors, incident } = action.payload; // Recibe incident
-
-      const currentCategory = CATEGORIES.find((c) => c.id === state.season.categoryId);
-      const pointsTable = currentCategory.pointsSystem;
-      const earnedPoints = pointsTable[userPosition - 1] || 0;
-
+      const { userPosition, circuitId, eventEffects, competitors, incident } = action.payload;
+      const currentCategory = CATEGORIES.find(c => c.id === state.season.categoryId);
+      const earnedPoints = currentCategory.pointsSystem[userPosition - 1] || 0;
       const sponsorEarnings = state.activeSponsors.reduce((sum, sp) => sum + sp.payoutPerRace, 0);
 
-      const updatedStandings = state.season.standings.map((driver) => {
+      // Actualizar Standings
+      const updatedStandings = state.season.standings.map(driver => {
         if (driver.isUser) {
           return {
             ...driver,
@@ -131,97 +172,37 @@ function careerReducer(state, action) {
             podiums: driver.podiums + (userPosition <= 3 ? 1 : 0)
           };
         }
-        const rivalPoints = Math.max(0, Math.floor(Math.random() * 12));
-        return { ...driver, points: driver.points + rivalPoints };
-      });
+        return { ...driver, points: driver.points + Math.max(0, Math.floor(Math.random() * 12)) };
+      }).sort((a, b) => b.points - a.points);
 
-      updatedStandings.sort((a, b) => b.points - a.points);
+      // Procesar módulos paralelos (Némesis y Misiones) usando los Helpers
+      const { nemesis, bonusPop: nemPop, bonusRep: nemRep } = processNemesis(state.season.nemesis, competitors, userPosition);
+      const questEffects = processQuest(state.season.activeQuest, userPosition, incident, competitors, nemesis);
 
-      // --- INICIO LÓGICA DE NÉMESIS ---
-      let currentNemesis = state.season.nemesis;
-      let bonusPop = 0;
-      let bonusRep = 0;
-
-      if (competitors && competitors.length > 0) {
-        if (!currentNemesis) {
-          const nemesisIndex = userPosition === 1 ? 1 : userPosition - 2;
-          const chosenRival = competitors[nemesisIndex]?.name || competitors[1].name;
-          currentNemesis = { name: chosenRival, score: 0 };
-        }
-        const nemesisPos = competitors.findIndex(c => c.name === currentNemesis.name) + 1;
-        if (userPosition < nemesisPos) {
-          currentNemesis = { ...currentNemesis, score: currentNemesis.score + 1 };
-          bonusPop += 3;
-          bonusRep += 2;
-        } else {
-          currentNemesis = { ...currentNemesis, score: currentNemesis.score - 1 };
-        }
-      }
-      // --- FIN LÓGICA DE NÉMESIS ---
-
-      // --- INICIO LÓGICA DE MICRO-OBJETIVO ---
-      let questBonusPop = 0;
-      let questBonusRep = 0;
-      let questBonusBudget = 0;
-      let questBonusTeamRel = 0;
-
-      if (state.season.activeQuest) {
-        const q = state.season.activeQuest;
-        let success = false;
-
-        if (q.type === 'POSITION') {
-          success = userPosition <= q.target;
-        } else if (q.type === 'CLEAN_RACE') {
-          success = !incident; // Usa la variable de incidente enviada desde RaceModal
-        } else if (q.type === 'BEAT_NEMESIS') {
-          const nemesisPos = competitors.findIndex(c => c.name === currentNemesis?.name) + 1;
-          success = userPosition < nemesisPos;
-        }
-
-        if (success) {
-          questBonusBudget = q.reward.budget || 0;
-          questBonusPop = q.reward.pop || 0;
-          questBonusRep = q.reward.rep || 0;
-          questBonusTeamRel = q.reward.teamRelationship || 0;
-        } else {
-          questBonusBudget = q.penalty.budget || 0;
-          questBonusPop = q.penalty.pop || 0;
-          questBonusRep = q.penalty.rep || 0;
-          questBonusTeamRel = q.penalty.teamRelationship || 0;
-        }
-      }
-      // --- FIN LÓGICA DE MICRO-OBJETIVO ---
-
-      let deltaPop = (userPosition <= 3 ? 8 : (userPosition <= 6 ? 4 : -2)) + bonusPop + questBonusPop;
-      let deltaRep = (userPosition <= 5 ? 5 : 0) + bonusRep + questBonusRep;
-      let deltaTeamRel = (userPosition <= 5 ? 4 : -2) + questBonusTeamRel;
-
-      if (eventEffects) {
-        if (eventEffects.popularity) deltaPop += eventEffects.popularity;
-        if (eventEffects.reputation) deltaRep += eventEffects.reputation;
-        if (eventEffects.teamRelationship) deltaTeamRel += eventEffects.teamRelationship;
-      }
+      // Calcular Deltas Finales
+      let deltaPop = (userPosition <= 3 ? 8 : userPosition <= 6 ? 4 : -2) + nemPop + questEffects.pop + (eventEffects?.popularity || 0);
+      let deltaRep = (userPosition <= 5 ? 5 : 0) + nemRep + questEffects.rep + (eventEffects?.reputation || 0);
+      let deltaTeamRel = (userPosition <= 5 ? 4 : -2) + questEffects.teamRel + (eventEffects?.teamRelationship || 0);
 
       const nextRound = state.season.currentRound + 1;
-      const isSeasonEnd = nextRound > state.season.totalRounds;
 
       return {
         ...state,
         pilot: {
           ...state.pilot,
-          popularity: Math.min(100, Math.max(0, state.pilot.popularity + deltaPop)),
-          reputation: Math.min(100, Math.max(0, state.pilot.reputation + deltaRep)),
-          budget: state.pilot.budget + sponsorEarnings + questBonusBudget + (eventEffects?.budget || 0),
+          popularity: clamp(state.pilot.popularity + deltaPop, 0, 100),
+          reputation: clamp(state.pilot.reputation + deltaRep, 0, 100),
+          budget: state.pilot.budget + sponsorEarnings + questEffects.budget + (eventEffects?.budget || 0),
           stats: {
             ...state.pilot.stats,
-            mentality: Math.min(100, Math.max(1, state.pilot.stats.mentality + (eventEffects?.mentality || 0))),
-            technicalFeedback: Math.min(100, Math.max(1, state.pilot.stats.technicalFeedback + (eventEffects?.technicalFeedback || 0))),
-            consistency: Math.min(100, Math.max(1, state.pilot.stats.consistency + (eventEffects?.consistency || 0)))
+            mentality: clamp(state.pilot.stats.mentality + (eventEffects?.mentality || 0), 1, 100),
+            technicalFeedback: clamp(state.pilot.stats.technicalFeedback + (eventEffects?.technicalFeedback || 0), 1, 100),
+            consistency: clamp(state.pilot.stats.consistency + (eventEffects?.consistency || 0), 1, 100)
           }
         },
         contract: {
           ...state.contract,
-          teamRelationship: Math.min(100, Math.max(0, state.contract.teamRelationship + deltaTeamRel))
+          teamRelationship: clamp(state.contract.teamRelationship + deltaTeamRel, 0, 100)
         },
         season: {
           ...state.season,
@@ -231,29 +212,20 @@ function careerReducer(state, action) {
             ...state.season.resultsHistory,
             { round: state.season.currentRound, circuitId, position: userPosition, points: earnedPoints }
           ],
-          isCompleted: isSeasonEnd,
-          nemesis: currentNemesis,
-          activeQuest: null // Se reinicia tras cada carrera
+          isCompleted: nextRound > state.season.totalRounds,
+          nemesis,
+          activeQuest: null
         }
       };
     }
 
     case "ADVANCE_SEASON": {
       const { chosenOffer, finalPosition, prizeMoney, repGain, popGain } = action.payload;
-      const currentCategory = CATEGORIES.find((c) => c.id === state.season.categoryId);
-      const newCategory = chosenOffer.category;
-
-      const archivedSeason = {
-        year: state.season.year,
-        categoryName: currentCategory.name,
-        teamId: state.contract.teamId,
-        finalPosition,
-        wins: state.season.standings.find((s) => s.isUser)?.wins || 0,
-        podiums: state.season.standings.find((s) => s.isUser)?.podiums || 0,
-        points: state.season.standings.find((s) => s.isUser)?.points || 0
-      };
-
-      const newGrid = generateInitialGrid(`${state.pilot.name} ${state.pilot.lastName}`);
+      const currentCategory = CATEGORIES.find(c => c.id === state.season.categoryId);
+      const isCategoryChange = currentCategory.id !== chosenOffer.category.id;
+      
+      let nextPopularity = clamp(state.pilot.popularity + popGain, 0, 100);
+      if (isCategoryChange) nextPopularity = Math.max(5, Math.floor(nextPopularity / 6));
 
       return {
         ...state,
@@ -261,8 +233,8 @@ function careerReducer(state, action) {
           ...state.pilot,
           age: state.pilot.age + 1,
           budget: state.pilot.budget + prizeMoney + chosenOffer.salary - chosenOffer.costToEnter,
-          reputation: Math.min(100, state.pilot.reputation + repGain),
-          popularity: Math.min(100, state.pilot.popularity + popGain)
+          reputation: clamp(state.pilot.reputation + repGain, 0, 100),
+          popularity: nextPopularity
         },
         contract: {
           teamId: chosenOffer.team.id,
@@ -273,21 +245,28 @@ function careerReducer(state, action) {
         },
         season: {
           year: state.season.year + 1,
-          categoryId: newCategory.id,
+          categoryId: chosenOffer.category.id,
           currentRound: 1,
-          totalRounds: newCategory.racesPerSeason,
-          standings: newGrid,
+          totalRounds: chosenOffer.category.racesPerSeason,
+          standings: generateInitialGrid(`${state.pilot.name} ${state.pilot.lastName}`),
           resultsHistory: [],
           isCompleted: false
         },
-        careerHistory: [...state.careerHistory, archivedSeason]
+        careerHistory: [...state.careerHistory, {
+          year: state.season.year,
+          categoryName: currentCategory.name,
+          teamId: state.contract.teamId,
+          finalPosition,
+          wins: state.season.standings.find(s => s.isUser)?.wins || 0,
+          podiums: state.season.standings.find(s => s.isUser)?.podiums || 0,
+          points: state.season.standings.find(s => s.isUser)?.points || 0
+        }]
       };
     }
 
-    case "RESET_CAREER": {
+    case "RESET_CAREER":
       clearGameData();
       return initialState;
-    }
 
     default:
       return state;
@@ -295,19 +274,17 @@ function careerReducer(state, action) {
 }
 
 export function CareerProvider({ children }) {
-  const [state, dispatch] = useReducer(careerReducer, initialState, () => {
-    const saved = loadGameData();
-    return saved || initialState;
-  });
+  const [state, dispatch] = useReducer(careerReducer, initialState, () => loadGameData() || initialState);
 
   useEffect(() => {
-    if (state.pilot) {
-      saveGameData(state);
-    }
+    if (state.pilot) saveGameData(state);
   }, [state]);
 
+  // Se memoiza el contexto para evitar re-renders masivos en la UI si el estado no ha cambiado
+  const contextValue = useMemo(() => ({ state, dispatch }), [state]);
+
   return (
-    <CareerContext.Provider value={{ state, dispatch }}>
+    <CareerContext.Provider value={contextValue}>
       {children}
     </CareerContext.Provider>
   );
@@ -315,8 +292,6 @@ export function CareerProvider({ children }) {
 
 export function useCareer() {
   const context = useContext(CareerContext);
-  if (!context) {
-    throw new Error("useCareer debe utilizarse dentro de un CareerProvider");
-  }
+  if (!context) throw new Error("useCareer debe utilizarse dentro de un CareerProvider");
   return context;
 }

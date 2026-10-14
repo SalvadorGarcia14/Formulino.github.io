@@ -12,8 +12,12 @@ function RaceModal({ onClose }) {
   const currentTeam = TEAMS.find((t) => t.id === state.contract?.teamId);
   const currentCircuit = CIRCUITS.find((c) => c.id === state.season.currentRound) || CIRCUITS[0];
 
-  // La fase inicial ahora es PREPARATION
-  const [phase, setPhase] = useState("PREPARATION");
+  // 1. Probabilidad del 40% de que el jefe de equipo te asigne un micro-objetivo
+  const [hasQuestTriggered] = useState(() => Math.random() < 0.4);
+
+  // 2. Si se activa, empezamos en PREPARATION. Si no, directo a TACTICS.
+  const [phase, setPhase] = useState(hasQuestTriggered ? "PREPARATION" : "TACTICS");
+  
   const [raceResult, setRaceResult] = useState(null);
   const [raceCondition, setRaceCondition] = useState(null);
   const [currentQuest, setCurrentQuest] = useState(null);
@@ -21,14 +25,16 @@ function RaceModal({ onClose }) {
   useEffect(() => {
     setRaceCondition(generateRaceCondition());
     
-    // Seleccionar una misión aleatoria
-    let randomQuest = QUESTS[Math.floor(Math.random() * QUESTS.length)];
-    // Evitar la misión del Némesis si es la primera carrera y aún no tienes uno
-    if (randomQuest.type === 'BEAT_NEMESIS' && !state.season.nemesis) {
-      randomQuest = QUESTS.find(q => q.type === 'CLEAN_RACE') || QUESTS[0];
+    // 3. Solo seleccionamos una misión si la aleatoriedad lo dictó
+    if (hasQuestTriggered) {
+      let randomQuest = QUESTS[Math.floor(Math.random() * QUESTS.length)];
+      // Evitar la misión del Némesis si es la primera carrera y aún no tienes uno
+      if (randomQuest.type === 'BEAT_NEMESIS' && !state.season.nemesis) {
+        randomQuest = QUESTS.find(q => q.type === 'CLEAN_RACE') || QUESTS[0];
+      }
+      setCurrentQuest(randomQuest);
     }
-    setCurrentQuest(randomQuest);
-  }, [state.season.nemesis]);
+  }, [state.season.nemesis, hasQuestTriggered]);
 
   const [hasEventTriggered] = useState(() => Math.random() < 0.5);
   const [selectedEvent] = useState(() => {
@@ -68,7 +74,8 @@ function RaceModal({ onClose }) {
     onClose();
   };
 
-  if (!raceCondition || !currentQuest) return null; 
+  // 4. Prevenimos errores de renderizado verificando que la misión exista si se activó
+  if (!raceCondition || (hasQuestTriggered && !currentQuest)) return null; 
 
   return (
     <div style={{
@@ -79,7 +86,7 @@ function RaceModal({ onClose }) {
       <div className="game-card" style={{ maxWidth: "600px", width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
 
         {/* FASE 0: PREPARATION (Micro-Objetivo) */}
-        {phase === "PREPARATION" && (
+        {phase === "PREPARATION" && currentQuest && (
           <div>
             <span style={{ fontSize: "0.8rem", color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "1px" }}>
               Reunión de Estrategia Pre-Carrera
@@ -136,7 +143,6 @@ function RaceModal({ onClose }) {
               </div>
             </div>
 
-            {/* Mantenido de tu código original para no perder la visualización de la misión */}
             {state.season.activeQuest && (
                <div style={{ marginBottom: "1.5rem", padding: "0.75rem", backgroundColor: "rgba(59, 130, 246, 0.15)", borderLeft: "4px solid var(--accent-blue)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", color: "var(--text-primary)" }}>
                  📌 <strong>Objetivo activo:</strong> {state.season.activeQuest.title}

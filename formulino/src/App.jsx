@@ -167,7 +167,7 @@ function CareerDashboard() {
           )}
         </div>
       </main>
-      /* 👆 FIN DE LA INTEGRACIÓN DEL NUEVO DISEÑO 👆 */
+      {/* 👆 FIN DE LA INTEGRACIÓN DEL NUEVO DISEÑO 👆 */}
 
       {/* Panel Comercial de Patrocinadores */}
       <div className="game-card fade-in-up delay-2" style={{ marginTop: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
