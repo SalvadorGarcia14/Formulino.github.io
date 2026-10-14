@@ -1,11 +1,27 @@
-import { useCareer } from "../../context/CareerContext";    
+import { useMemo } from "react";
+import { useCareer } from "../../context/CareerContext";
 import { SPONSORS } from "../../data/sponsors";
 
+// Constante global para evitar "números mágicos" repetidos en el código
+const MAX_SPONSORS = 3;
+
 function SponsorModal({ onClose }) {
+  // BLOQUE 1: Extracción de estado y cálculos memorizados
   const { state, dispatch } = useCareer();
   const { pilot, activeSponsors } = state;
 
+  // Evaluamos una sola vez fuera del bucle si se alcanzó el tope de contratos
+  const isSlotsFull = activeSponsors.length >= MAX_SPONSORS;
+
+  // Creamos un Set memorizado con los IDs activos para búsquedas instantáneas
+  const signedIds = useMemo(
+    () => new Set(activeSponsors.map((s) => s.id)),
+    [activeSponsors]
+  );
+
+  // BLOQUE 2: Manejadores de eventos comerciales
   const handleSign = (sponsor) => {
+    if (isSlotsFull || signedIds.has(sponsor.id)) return;
     dispatch({ type: "SIGN_SPONSOR", payload: sponsor });
   };
 
@@ -26,11 +42,13 @@ function SponsorModal({ onClose }) {
       zIndex: 1100
     }}>
       <div className="game-card" style={{ maxWidth: "700px", width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
+        
+        {/* BLOQUE 3: Cabecera e indicadores de capacidad */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div>
             <h2 style={{ fontSize: "1.5rem", margin: 0 }}>🤝 Departamento Comercial & Sponsors</h2>
             <p style={{ margin: "0.25rem 0 0 0", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-              Popularidad actual: <strong style={{ color: "var(--accent-pink)" }}>{pilot.popularity}/100</strong> • Espacios: <strong>{activeSponsors.length}/3</strong>
+              Popularidad actual: <strong style={{ color: "var(--accent-pink)" }}>{pilot.popularity}/100</strong> • Espacios: <strong>{activeSponsors.length}/{MAX_SPONSORS}</strong>
             </p>
           </div>
           <button className="btn btn-danger" onClick={onClose} style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}>
@@ -38,7 +56,7 @@ function SponsorModal({ onClose }) {
           </button>
         </div>
 
-        {/* Sponsors Activos */}
+        {/* BLOQUE 4: Listado de Sponsors Activos */}
         <div style={{ marginBottom: "1.5rem" }}>
           <h4 style={{ fontSize: "0.9rem", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "0.5rem" }}>
             Patrocinadores en el Mono / Auto
@@ -81,16 +99,15 @@ function SponsorModal({ onClose }) {
           )}
         </div>
 
-        {/* Mercado de Patrocinios */}
+        {/* BLOQUE 5: Mercado de Patrocinios y Validación de Requisitos */}
         <div>
           <h4 style={{ fontSize: "0.9rem", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "0.75rem" }}>
             Marcas Interesadas
           </h4>
           <div style={{ display: "grid", gap: "0.75rem" }}>
             {SPONSORS.map((sp) => {
-              const isSigned = activeSponsors.some((s) => s.id === sp.id);
+              const isSigned = signedIds.has(sp.id);
               const isUnlocked = pilot.popularity >= sp.minPopularity;
-              const isSlotsFull = activeSponsors.length >= 3;
 
               return (
                 <div
@@ -100,7 +117,8 @@ function SponsorModal({ onClose }) {
                     borderRadius: "var(--radius-sm)",
                     backgroundColor: isSigned ? "#132338" : "var(--bg-card)",
                     border: isSigned ? "1px solid var(--accent-blue)" : "1px solid var(--border-subtle)",
-                    opacity: !isUnlocked ? 0.45 : 1
+                    opacity: !isUnlocked ? 0.45 : 1,
+                    transition: "opacity 0.2s ease, border-color 0.2s ease"
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -119,7 +137,9 @@ function SponsorModal({ onClose }) {
 
                     <div>
                       {isSigned ? (
-                        <span style={{ fontSize: "0.8rem", color: "var(--accent-blue)", fontWeight: 600 }}>Activo ✓</span>
+                        <span style={{ fontSize: "0.8rem", color: "var(--accent-blue)", fontWeight: 600 }}>
+                          Activo ✓
+                        </span>
                       ) : !isUnlocked ? (
                         <span style={{ fontSize: "0.75rem", color: "var(--accent-amber)" }}>
                           Requiere {sp.minPopularity} Pop
@@ -129,7 +149,12 @@ function SponsorModal({ onClose }) {
                           className="btn btn-primary"
                           onClick={() => handleSign(sp)}
                           disabled={isSlotsFull}
-                          style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem", opacity: isSlotsFull ? 0.5 : 1 }}
+                          style={{
+                            padding: "0.4rem 0.75rem",
+                            fontSize: "0.8rem",
+                            opacity: isSlotsFull ? 0.5 : 1,
+                            cursor: isSlotsFull ? "not-allowed" : "pointer"
+                          }}
                         >
                           {isSlotsFull ? "Espacios Llenos" : "Firmar Contrato"}
                         </button>
@@ -141,6 +166,7 @@ function SponsorModal({ onClose }) {
             })}
           </div>
         </div>
+
       </div>
     </div>
   );

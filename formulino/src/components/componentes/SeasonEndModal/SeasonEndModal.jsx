@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { useCareer } from "../../context/CareerContext.jsx";
 import { generateSeasonOffers } from "../../services/contractEngine";
-import StatBar from "../StatBar/StatBar";
+import StatBar from "../StatBar/StatBar"; // Prevención de errores tipográficos en el import[cite: 2]
 
 function SeasonEndModal({ onClose }) {
   const { state, dispatch } = useCareer();
   const [selectedOfferId, setSelectedOfferId] = useState(null);
 
+  // BLOQUE 1: Generación de ofertas de mercado memorizadas
   const { finalPosition, offers } = useMemo(() => {
     return generateSeasonOffers({
       pilot: state.pilot,
@@ -16,6 +17,7 @@ function SeasonEndModal({ onClose }) {
     });
   }, [state.pilot, state.season.standings, state.contract?.teamId, state.season?.categoryId]);
 
+  // BLOQUE 2: Cálculo de premios escalables por rendimiento y categoría
   const rewards = useMemo(() => {
     const tierMultiplier = state.season.categoryId || 1;
     if (finalPosition === 1) return { money: 20000 * tierMultiplier, rep: 15, pop: 20, title: "👑 ¡CAMPEÓN DE LA TEMPORADA!" };
@@ -24,9 +26,11 @@ function SeasonEndModal({ onClose }) {
     return { money: 2000 * tierMultiplier, rep: 1, pop: 0, title: "Fin de Temporada" };
   }, [finalPosition, state.season.categoryId]);
 
-  const selectedOffer = offers.find((o) => o.id === selectedOfferId);
-  const canAfford = selectedOffer ? state.pilot.budget + rewards.money >= selectedOffer.costToEnter : false;
+  // BLOQUE 3: Evaluación de la viabilidad financiera
+  const selectedOffer = useMemo(() => offers.find((o) => o.id === selectedOfferId), [offers, selectedOfferId]);
+  const canAfford = selectedOffer ? (state.pilot.budget + rewards.money) >= selectedOffer.costToEnter : false;
 
+  // BLOQUE 4: Transición al siguiente año competitivo
   const handleSignOffer = () => {
     if (!selectedOffer || !canAfford) return;
 
@@ -43,6 +47,7 @@ function SeasonEndModal({ onClose }) {
     onClose();
   };
 
+  // BLOQUE 5: Renderizado y estilos (UI)
   return (
     <div style={{
       position: "fixed",
@@ -57,6 +62,7 @@ function SeasonEndModal({ onClose }) {
     }}>
       <div className="game-card" style={{ maxWidth: "750px", width: "100%", maxHeight: "92vh", overflowY: "auto" }}>
         
+        {/* Cabecera de Premiación */}
         <div style={{ textAlign: "center", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "1.25rem", marginBottom: "1.5rem" }}>
           <span style={{ fontSize: "2.5rem" }}>{finalPosition === 1 ? "🏆" : "🏁"}</span>
           <h2 style={{ fontSize: "1.8rem", margin: "0.25rem 0" }}>{rewards.title}</h2>
@@ -84,6 +90,7 @@ function SeasonEndModal({ onClose }) {
           📋 Ofertas de Contrato para el Próximo Año ({state.pilot.age + 1} años):
         </h3>
 
+        {/* Listado Interactivo de Ofertas */}
         <div style={{ display: "grid", gap: "0.85rem", marginBottom: "1.5rem" }}>
           {offers.map((offer) => {
             const isSelected = selectedOfferId === offer.id;
@@ -100,7 +107,8 @@ function SeasonEndModal({ onClose }) {
                   cursor: unaffordable ? "not-allowed" : "pointer",
                   opacity: unaffordable ? 0.5 : 1,
                   padding: "1rem",
-                  borderColor: isSelected ? "var(--accent-blue)" : "var(--border-subtle)"
+                  borderColor: isSelected ? "var(--accent-blue)" : "var(--border-subtle)",
+                  transition: "all 0.2s ease"
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -137,6 +145,7 @@ function SeasonEndModal({ onClose }) {
           })}
         </div>
 
+        {/* Botón de Confirmación */}
         <button
           className="btn btn-success"
           onClick={handleSignOffer}
@@ -157,6 +166,5 @@ function SeasonEndModal({ onClose }) {
     </div>
   );
 }
-
 
 export default SeasonEndModal;

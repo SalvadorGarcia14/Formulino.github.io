@@ -1,41 +1,43 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useCareer } from "../../context/CareerContext.jsx";
 import { TEAMS } from "../../data/teams.jsx";
-import { CATEGORIES } from "../../data/categories.jsx";
 import { CIRCUITS } from "../../data/circuits.jsx";
 import { QUESTS } from "../../data/quests.jsx";
 import { POST_RACE_EVENTS } from "../../data/events.jsx";
 import { simulateRace, generateRaceCondition } from "../../services/gameEngine.jsx";
 
 function RaceModal({ onClose }) {
+  // BLOQUE 1: Extracción de contexto y búsqueda memorizada de entidades
   const { state, dispatch } = useCareer();
-  const currentTeam = TEAMS.find((t) => t.id === state.contract?.teamId);
-  const currentCircuit = CIRCUITS.find((c) => c.id === state.season.currentRound) || CIRCUITS[0];
 
-  // 1. Probabilidad del 40% de que el jefe de equipo te asigne un micro-objetivo
+  const currentTeam = useMemo(
+    () => TEAMS.find((t) => t.id === state.contract?.teamId),
+    [state.contract?.teamId]
+  );
+
+  const currentCircuit = useMemo(
+    () => CIRCUITS.find((c) => c.id === state.season.currentRound) || CIRCUITS[0],
+    [state.season.currentRound]
+  );
+
+  // BLOQUE 2: Sorteo síncrono pre-carrera y control de fases
+  const [raceCondition] = useState(() => generateRaceCondition());
   const [hasQuestTriggered] = useState(() => Math.random() < 0.4);
 
-  // 2. Si se activa, empezamos en PREPARATION. Si no, directo a TACTICS.
-  const [phase, setPhase] = useState(hasQuestTriggered ? "PREPARATION" : "TACTICS");
-  
-  const [raceResult, setRaceResult] = useState(null);
-  const [raceCondition, setRaceCondition] = useState(null);
-  const [currentQuest, setCurrentQuest] = useState(null);
-
-  useEffect(() => {
-    setRaceCondition(generateRaceCondition());
-    
-    // 3. Solo seleccionamos una misión si la aleatoriedad lo dictó
-    if (hasQuestTriggered) {
-      let randomQuest = QUESTS[Math.floor(Math.random() * QUESTS.length)];
-      // Evitar la misión del Némesis si es la primera carrera y aún no tienes uno
-      if (randomQuest.type === 'BEAT_NEMESIS' && !state.season.nemesis) {
-        randomQuest = QUESTS.find(q => q.type === 'CLEAN_RACE') || QUESTS[0];
-      }
-      setCurrentQuest(randomQuest);
+  const [currentQuest] = useState(() => {
+    if (!hasQuestTriggered) return null;
+    let randomQuest = QUESTS[Math.floor(Math.random() * QUESTS.length)];
+    // Evitar la misión del Némesis si es la primera carrera y aún no tienes uno
+    if (randomQuest.type === "BEAT_NEMESIS" && !state.season.nemesis) {
+      randomQuest = QUESTS.find((q) => q.type === "CLEAN_RACE") || QUESTS[0];
     }
-  }, [state.season.nemesis, hasQuestTriggered]);
+    return randomQuest;
+  });
 
+  const [phase, setPhase] = useState(hasQuestTriggered ? "PREPARATION" : "TACTICS");
+  const [raceResult, setRaceResult] = useState(null);
+
+  // BLOQUE 3: Sorteo de evento post-carrera en Paddock
   const [hasEventTriggered] = useState(() => Math.random() < 0.5);
   const [selectedEvent] = useState(() => {
     const randomIndex = Math.floor(Math.random() * POST_RACE_EVENTS.length);
@@ -43,6 +45,7 @@ function RaceModal({ onClose }) {
   });
   const [selectedOption, setSelectedOption] = useState(null);
 
+  // BLOQUE 4: Manejadores de lógica de carrera y despacho al estado global
   const handleAcceptQuest = () => {
     dispatch({ type: "ACCEPT_QUEST", payload: currentQuest });
     setPhase("TACTICS");
@@ -54,7 +57,8 @@ function RaceModal({ onClose }) {
       team: currentTeam,
       circuit: currentCircuit,
       tacticalChoice: choice,
-      condition: raceCondition
+      condition: raceCondition,
+      activeSponsors: state.activeSponsors // Inyección de buffs comerciales al motor
     });
     setRaceResult(outcome);
     setPhase("RESULTS");
@@ -68,15 +72,13 @@ function RaceModal({ onClose }) {
         circuitId: currentCircuit.id,
         eventEffects: optionEffects,
         competitors: raceResult.competitors,
-        incident: raceResult.incident // Enviamos el estado de incidente para procesar la misión CLEAN_RACE
+        incident: raceResult.incident // Necesario para validar la misión CLEAN_RACE
       }
     });
     onClose();
   };
 
-  // 4. Prevenimos errores de renderizado verificando que la misión exista si se activó
-  if (!raceCondition || (hasQuestTriggered && !currentQuest)) return null; 
-
+  // BLOQUE 5: Renderizado de interfaz por fases
   return (
     <div style={{
       position: "fixed", inset: 0, backgroundColor: "rgba(0, 0, 0, 0.75)",
@@ -144,9 +146,9 @@ function RaceModal({ onClose }) {
             </div>
 
             {state.season.activeQuest && (
-               <div style={{ marginBottom: "1.5rem", padding: "0.75rem", backgroundColor: "rgba(59, 130, 246, 0.15)", borderLeft: "4px solid var(--accent-blue)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", color: "var(--text-primary)" }}>
-                 📌 <strong>Objetivo activo:</strong> {state.season.activeQuest.title}
-               </div>
+              <div style={{ marginBottom: "1.5rem", padding: "0.75rem", backgroundColor: "rgba(59, 130, 246, 0.15)", borderLeft: "4px solid var(--accent-blue)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", color: "var(--text-primary)" }}>
+                📌 <strong>Objetivo activo:</strong> {state.season.activeQuest.title}
+              </div>
             )}
 
             {/* Panel Climático tipo Telemetría */}
@@ -187,7 +189,7 @@ function RaceModal({ onClose }) {
         )}
 
         {/* FASE 2: RESULTADOS DE META */}
-        {phase === "RESULTS" && (
+        {phase === "RESULTS" && raceResult && (
           <div>
             <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
               <span style={{ fontSize: "3rem" }}>
@@ -232,7 +234,7 @@ function RaceModal({ onClose }) {
         )}
 
         {/* FASE 3: EVENTO POST-CARRERA */}
-        {phase === "EVENT" && (
+        {phase === "EVENT" && selectedEvent && (
           <div>
             <span style={{ fontSize: "0.8rem", color: "var(--accent-pink)", textTransform: "uppercase", letterSpacing: "1px" }}>
               Evento de Fin de Semana
@@ -268,6 +270,7 @@ function RaceModal({ onClose }) {
             </button>
           </div>
         )}
+
       </div>
     </div>
   );
