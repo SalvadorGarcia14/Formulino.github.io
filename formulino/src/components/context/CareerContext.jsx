@@ -40,7 +40,8 @@ const initialState = {
       salary: 0,
       seasonYear: 1,
       teamRelationship: 75,
-      role: "Piloto 2"
+      role: "Piloto Titular",
+      carUpgrades: { performance: 0, reliability: 0 } // <-- I+D del coche actual
     }
   */
 
@@ -53,23 +54,23 @@ const initialState = {
     standings: [],
     resultsHistory: [],
     isCompleted: false,
-    nemesis: null, // <-- Nuevo estado
+    nemesis: null,
     activeQuest: null
   },
 
   // Patrocinadores activos (piloto_sponsor)
   activeSponsors: [],
 
-  // Historial global de trayectoria (para el sistema de legado)
+  // Historial global de trayectoria (sistema de legado)
   careerHistory: []
 };
 
-// --- FUNCIONES HELPER (Optimizan y limpian el reducer) ---
+// --- FUNCIONES HELPER ---
 
 // Limita un valor numérico entre un mínimo y un máximo
 const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
 
-// Procesa la lógica de la rivalidad aislando la complejidad
+// Procesa la lógica de la rivalidad adaptada a pilotName
 const processNemesis = (currentNemesis, competitors, userPosition) => {
   let nemesis = currentNemesis;
   let bonusPop = 0;
@@ -78,10 +79,10 @@ const processNemesis = (currentNemesis, competitors, userPosition) => {
   if (competitors && competitors.length > 0) {
     if (!nemesis) {
       const nemesisIndex = userPosition === 1 ? 1 : userPosition - 2;
-      const chosenRival = competitors[nemesisIndex]?.name || competitors[1].name;
+      const chosenRival = competitors[nemesisIndex]?.pilotName || competitors[1]?.pilotName || "Rival";
       nemesis = { name: chosenRival, score: 0 };
     }
-    const nemesisPos = competitors.findIndex(c => c.name === nemesis.name) + 1;
+    const nemesisPos = competitors.findIndex(c => c.pilotName === nemesis.name) + 1;
     if (userPosition < nemesisPos) {
       nemesis = { ...nemesis, score: nemesis.score + 1 };
       bonusPop = 3;
@@ -101,7 +102,7 @@ const processQuest = (quest, userPosition, incident, competitors, nemesis) => {
   if (quest.type === 'POSITION') success = userPosition <= quest.target;
   else if (quest.type === 'CLEAN_RACE') success = !incident;
   else if (quest.type === 'BEAT_NEMESIS') {
-    const nemesisPos = competitors.findIndex(c => c.name === nemesis?.name) + 1;
+    const nemesisPos = competitors.findIndex(c => c.pilotName === nemesis?.name) + 1;
     success = userPosition < nemesisPos;
   }
 
@@ -119,6 +120,7 @@ function careerReducer(state, action) {
   switch (action.type) {
     case "INIT_CAREER": {
       const { pilot, teamId } = action.payload;
+      const startingCategory = CATEGORIES.find(c => c.id === 1) || CATEGORIES[0];
       return {
         ...initialState,
         pilot,
@@ -127,11 +129,14 @@ function careerReducer(state, action) {
           salary: 0,
           seasonYear: 1,
           teamRelationship: 70,
-          role: "Piloto Titular"
+          role: "Piloto Titular",
+          carUpgrades: { performance: 0, reliability: 0 } // Inicializar mejoras de I+D
         },
         season: {
           ...initialState.season,
-          standings: generateInitialGrid(`${pilot.name} ${pilot.lastName}`)
+          categoryId: 1,
+          totalRounds: startingCategory.racesPerSeason,
+          standings: generateInitialGrid(`${pilot.name} ${pilot.lastName}`, 1, teamId)
         },
         activeSponsors: []
       };
@@ -156,6 +161,51 @@ function careerReducer(state, action) {
       };
     }
 
+    // --- NUEVO: SISTEMA DE COMPRAS E INVERSIÓN I+D ---
+    case "UPGRADE_PILOT_STAT": {
+      const { statKey, cost } = action.payload; // statKey: 'performance', 'consistency', etc.
+      if (state.pilot.budget < cost) return state;
+
+      const currentVal = state.pilot.stats[statKey] || 50;
+      if (currentVal >= 99) return state; // Tope máximo
+
+      return {
+        ...state,
+        pilot: {
+          ...state.pilot,
+          budget: state.pilot.budget - cost,
+          stats: {
+            ...state.pilot.stats,
+            [statKey]: clamp(currentVal + 1, 1, 99)
+          }
+        }
+      };
+    }
+
+    case "UPGRADE_TEAM_CAR": {
+      const { upgradeType, cost } = action.payload; // upgradeType: 'performance' o 'reliability'
+      if (state.pilot.budget < cost) return state;
+
+      const currentUpgrades = state.contract?.carUpgrades || { performance: 0, reliability: 0 };
+      if (currentUpgrades[upgradeType] >= 10) return state; // Límite de mejoras por contrato/temporada
+
+      return {
+        ...state,
+        pilot: {
+          ...state.pilot,
+          budget: state.pilot.budget - cost
+        },
+        contract: {
+          ...state.contract,
+          carUpgrades: {
+            ...currentUpgrades,
+            [upgradeType]: currentUpgrades[upgradeType] + 1
+          }
+        }
+      };
+    }
+    // ------------------------------------------------
+
     case "COMPLETE_ROUND": {
       const { userPosition, circuitId, eventEffects, competitors, incident } = action.payload;
       const currentCategory = CATEGORIES.find(c => c.id === state.season.categoryId);
@@ -175,7 +225,7 @@ function careerReducer(state, action) {
         return { ...driver, points: driver.points + Math.max(0, Math.floor(Math.random() * 12)) };
       }).sort((a, b) => b.points - a.points);
 
-      // Procesar módulos paralelos (Némesis y Misiones) usando los Helpers
+      // Procesar módulos paralelos (Némesis y Misiones)
       const { nemesis, bonusPop: nemPop, bonusRep: nemRep } = processNemesis(state.season.nemesis, competitors, userPosition);
       const questEffects = processQuest(state.season.activeQuest, userPosition, incident, competitors, nemesis);
 
@@ -241,16 +291,20 @@ function careerReducer(state, action) {
           salary: chosenOffer.salary,
           seasonYear: state.season.year + 1,
           teamRelationship: 75,
-          role: chosenOffer.role
+          role: chosenOffer.role,
+          carUpgrades: { performance: 0, reliability: 0 } // Reiniciar I+D al cambiar o renovar contrato con nuevo coche
         },
         season: {
           year: state.season.year + 1,
           categoryId: chosenOffer.category.id,
           currentRound: 1,
           totalRounds: chosenOffer.category.racesPerSeason,
-          standings: generateInitialGrid(`${state.pilot.name} ${state.pilot.lastName}`),
+          // Aquí se inyectan los pilotos y se desplaza al compañero correspondiente según el teamId elegido
+          standings: generateInitialGrid(`${state.pilot.name} ${state.pilot.lastName}`, chosenOffer.category.id, chosenOffer.team.id),
           resultsHistory: [],
-          isCompleted: false
+          isCompleted: false,
+          nemesis: null,
+          activeQuest: null
         },
         careerHistory: [...state.careerHistory, {
           year: state.season.year,
@@ -280,7 +334,6 @@ export function CareerProvider({ children }) {
     if (state.pilot) saveGameData(state);
   }, [state]);
 
-  // Se memoiza el contexto para evitar re-renders masivos en la UI si el estado no ha cambiado
   const contextValue = useMemo(() => ({ state, dispatch }), [state]);
 
   return (

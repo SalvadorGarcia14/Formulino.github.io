@@ -6,7 +6,7 @@ import StandingsTable from "./components/componentes/StandingsTable/StandingsTab
 import RaceModal from "./components/componentes/RaceModal/RaceModal.jsx";
 import SeasonEndModal from "./components/componentes/SeasonEndModal/SeasonEndModal.jsx";
 import SponsorModal from "./components/componentes/SponsorModal/SponsorModal.jsx";
-
+import RndModal from "./components/componentes/RndModal/RndModal.jsx" // <-- NUEVO: Importación del modal de I+D
 
 import { TEAMS } from "./components/data/teams.jsx";
 import { CATEGORIES } from "./components/data/categories.jsx";
@@ -15,11 +15,13 @@ import "./components/styles/theme.css";
 import "./components/styles/Formulino.css";
 
 import './App.css'
+
 function CareerDashboard() {
   const { state, dispatch } = useCareer();
   const [isRaceOpen, setIsRaceOpen] = useState(false);
   const [isSeasonEndOpen, setIsSeasonEndOpen] = useState(false);
   const [isSponsorOpen, setIsSponsorOpen] = useState(false);
+  const [showRndModal, setShowRndModal] = useState(false); // <-- NUEVO: Estado para abrir/cerrar el modal de I+D
 
   const currentTeam = TEAMS.find((t) => t.id === state.contract?.teamId);
   const currentCategory = CATEGORIES.find((c) => c.id === state.season?.categoryId);
@@ -27,7 +29,6 @@ function CareerDashboard() {
   const totalSponsorIncome = state.activeSponsors?.reduce((sum, sp) => sum + sp.payoutPerRace, 0) || 0;
 
   return (
-    /* 👇 INICIO DE LA INTEGRACIÓN DEL NUEVO DISEÑO 👇 */
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem 1.5rem" }}>
       <header className="glass-panel fade-in-up" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", padding: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
@@ -67,7 +68,6 @@ function CareerDashboard() {
               <span style={{ color: "var(--text-secondary)" }}>Rol</span>
               <span className="telemetry-text">{state.contract?.role}</span>
             </p>
-            {/* Se mantiene la relación con el equipo de tu código anterior */}
             <p style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem" }}>
               <span style={{ color: "var(--text-secondary)" }}>Relación Eq.</span>
               <span className="telemetry-text" style={{ color: "var(--accent-emerald)" }}>{state.contract?.teamRelationship}%</span>
@@ -84,7 +84,7 @@ function CareerDashboard() {
 
         <div className="game-card fade-in-up delay-2">
           
-          {/* FUSIÓN: Widget de Rivalidad adaptado a la nueva estructura */}
+          {/* Widget de Rivalidad */}
           {state.season.nemesis && !state.season.isCompleted && (
             <div style={{
               marginBottom: "1.25rem", padding: "0.85rem",
@@ -149,7 +149,6 @@ function CareerDashboard() {
               <span style={{ color: "var(--text-secondary)" }}>Popularidad</span>
               <strong className="telemetry-text" style={{ color: "var(--accent-pink)" }}>{state.pilot.popularity}%</strong>
             </p>
-            {/* Se mantiene la Reputación de tu código anterior */}
             <p style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem" }}>
               <span style={{ color: "var(--text-secondary)" }}>Reputación</span>
               <strong className="telemetry-text" style={{ color: "var(--accent-blue)" }}>{state.pilot.reputation}%</strong>
@@ -167,19 +166,32 @@ function CareerDashboard() {
           )}
         </div>
       </main>
-      {/* 👆 FIN DE LA INTEGRACIÓN DEL NUEVO DISEÑO 👆 */}
 
-      {/* Panel Comercial de Patrocinadores */}
-      <div className="game-card fade-in-up delay-2" style={{ marginTop: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h4 style={{ margin: 0, fontSize: "1rem" }}>💼 Patrocinadores Activos ({state.activeSponsors?.length || 0}/3)</h4>
-          <p style={{ margin: "0.2rem 0 0 0", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-            Ingresos fijos: <strong style={{ color: "var(--accent-emerald)" }}>+${totalSponsorIncome.toLocaleString()} / carrera disputada</strong>
-          </p>
+      {/* Panel Comercial de Patrocinadores y Botón de I+D */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1.5rem" }}>
+        <div className="game-card fade-in-up delay-2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: 0 }}>
+          <div>
+            <h4 style={{ margin: 0, fontSize: "1rem" }}>💼 Patrocinadores ({state.activeSponsors?.length || 0}/3)</h4>
+            <p style={{ margin: "0.2rem 0 0 0", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+              Fijo: <strong style={{ color: "var(--accent-emerald)" }}>+${totalSponsorIncome.toLocaleString()}</strong>
+            </p>
+          </div>
+          <button className="btn btn-primary" onClick={() => setIsSponsorOpen(true)} style={{ padding: "0.5rem 0.85rem", fontSize: "0.85rem" }}>
+            Gestionar 🤝
+          </button>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsSponsorOpen(true)} style={{ padding: "0.5rem 0.85rem", fontSize: "0.85rem" }}>
-          Gestionar Sponsors 🤝
-        </button>
+
+        <div className="game-card fade-in-up delay-2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: 0 }}>
+          <div>
+            <h4 style={{ margin: 0, fontSize: "1rem" }}>🔧 Taller & I+D</h4>
+            <p style={{ margin: "0.2rem 0 0 0", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+              Mejora atributos y coche
+            </p>
+          </div>
+          <button className="btn btn-primary" onClick={() => setShowRndModal(true)} style={{ padding: "0.5rem 0.85rem", fontSize: "0.85rem" }}>
+            Entrar al Taller ⚙️
+          </button>
+        </div>
       </div>
 
       {/* Historial de Temporadas Pasadas */}
@@ -218,6 +230,7 @@ function CareerDashboard() {
       {isRaceOpen && <RaceModal onClose={() => setIsRaceOpen(false)} />}
       {isSeasonEndOpen && <SeasonEndModal onClose={() => setIsSeasonEndOpen(false)} />}
       {isSponsorOpen && <SponsorModal onClose={() => setIsSponsorOpen(false)} />}
+      {showRndModal && <RndModal onClose={() => setShowRndModal(false)} />}
     </div>
   );
 }

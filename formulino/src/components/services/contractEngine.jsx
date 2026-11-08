@@ -1,32 +1,35 @@
-import { TEAMS } from "../data/teams.jsx";
-import { CATEGORIES } from "../data/categories.jsx";
-
+import { TEAMS } from "../data/teams";
+import { CATEGORIES } from "../data/categories";
 
 export function generateSeasonOffers({ pilot, seasonStandings, currentTeamId, currentCategoryId = 1 }) {
   const userStandingIndex = seasonStandings.findIndex((s) => s.isUser);
   const finalPosition = userStandingIndex !== -1 ? userStandingIndex + 1 : 10;
 
+  // Obtener categoría actual y siguiente (si existe)
   const currentCategory = CATEGORIES.find((c) => c.id === currentCategoryId) || CATEGORIES[0];
   const nextCategoryId = Math.min(currentCategory.id + 1, CATEGORIES.length);
   const nextCategory = CATEGORIES.find((c) => c.id === nextCategoryId);
 
+  // Filtrar equipos por categoría actual y superior
   const currentTierTeams = TEAMS.filter((t) => t.categoryId === currentCategory.id);
-  const nextTierTeams = TEAMS.filter((t) => t.categoryId === nextCategoryId);
+  const nextTierTeams = TEAMS.filter((t) => t.categoryId === nextCategory?.id);
 
   const offers = [];
 
   // 1. Renovación en el equipo actual (si existe en la categoría)
   const stayTeam = currentTierTeams.find((t) => t.id === currentTeamId) || currentTierTeams[0];
-  offers.push({
-    id: `offer_renewal_${stayTeam.id}_cat${currentCategory.id}`,
-    team: stayTeam,
-    category: currentCategory,
-    type: "RENEWAL",
-    role: finalPosition <= 3 ? "Primer Piloto" : "Piloto Titular",
-    salary: currentCategory.id * 3000,
-    costToEnter: 0,
-    description: `Renovación para continuar un año más en ${currentCategory.name}.`
-  });
+  if (stayTeam) {
+    offers.push({
+      id: `offer_renewal_${stayTeam.id}_cat${currentCategory.id}`,
+      team: stayTeam,
+      category: currentCategory,
+      type: "RENEWAL",
+      role: finalPosition <= 3 ? "Primer Piloto" : "Piloto Titular",
+      salary: currentCategory.id * 3000,
+      costToEnter: 0,
+      description: `Renovación para continuar un año más en ${currentCategory.name}.`
+    });
+  }
 
   // 2. Oferta alternativa dentro de la misma categoría
   const altTeam = currentTierTeams.find((t) => t.id !== currentTeamId) || currentTierTeams[1];
@@ -43,8 +46,9 @@ export function generateSeasonOffers({ pilot, seasonStandings, currentTeamId, cu
     });
   }
 
-  // 3. Ofertas hacia la categoría superior (si no estamos en el tope)
-  if (nextCategory && nextCategory.id !== currentCategory.id) {
+  // 3. Ofertas hacia la categoría superior (siempre que no estemos en el tope de F1)
+  if (nextCategory && nextCategory.id !== currentCategory.id && nextTierTeams.length > 0) {
+    // Criterio de ascenso: posición destacada en campeonato o reputación suficiente
     const qualifyForPromotion = finalPosition <= 3 || pilot.reputation >= (currentCategory.id * 20);
 
     nextTierTeams.forEach((team) => {

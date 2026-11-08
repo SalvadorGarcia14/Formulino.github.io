@@ -161,6 +161,8 @@
 /* src/components/styles/Formulino.css */
 
 /* Efecto panel de cristal para modales y tarjetas destacadas */
+
+
 .glass-panel {
   background: rgba(19, 27, 38, 0.75);
   backdrop-filter: blur(16px);
