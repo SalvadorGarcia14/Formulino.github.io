@@ -11,8 +11,8 @@ const initialState = {
   /*
     Estructura esperada:
     {
-      name: "Juan",
-      lastName: "Pérez",
+      name: "Salvi",
+      lastName: "Garcia",
       nationality: "Argentina",
       number: 14,
       age: 16,
