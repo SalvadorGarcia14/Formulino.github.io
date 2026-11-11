@@ -132,7 +132,6 @@ function CreatePlayer() {
                             <select className="form-select" name="gender" value={formData.gender} onChange={handleInputChange}>
                                 <option value="M">Masculino</option>
                                 <option value="F">Femenino</option>
-                                <option value="NB">No Binario</option>
                             </select>
                         </div>
                     </div>
